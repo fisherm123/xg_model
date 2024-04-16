@@ -40,7 +40,7 @@ def parse_array(parser):
         _, event, val = next(parser)
     return arr, parser
 
-def get_shots_from_file(filename):
+def get_shots_from_file(filename, with_penalties=False):
     with open(filename, 'rb') as file:
         parser = ijson.parse(file)
         shots = []
@@ -55,7 +55,7 @@ def get_shots_from_file(filename):
                     length = 7
                     shot = [
                         obj['shot']['statsbomb_xg'],
-                        1 if obj['shot']['outcome']['name'] == 'Goal' else 0,
+                        1 if obj['shot']['outcome']['name'] == 'Goal' else -1,
                         obj['location'][0],
                         obj['location'][1],
                         obj['shot']['body_part']['id'],
@@ -63,7 +63,9 @@ def get_shots_from_file(filename):
                         obj['shot']['type']['id']
                     ]
                     #if penalty, object has no freeze_frame
-                    if 'freeze_frame' in obj['shot']:
+                    if obj['shot']['type']['id'] != 88:
+                        if 'freeze_frame' not in obj['shot']:
+                            print(obj)
                         for p in obj['shot']['freeze_frame']:
                             if p['teammate'] == False:
                                 shot.extend(p['location'])
@@ -82,6 +84,8 @@ def get_shots_from_file(filename):
                             length += 2
                     #if penalty, pad all player location features
                     else:
+                        if not with_penalties:
+                            continue
                         while length < 49:
                             shot.extend([-1, -1])
                             length += 2
