@@ -1,18 +1,24 @@
 import os
 import ijson
 import numpy as np
+import math
 
 DIR = '../../open-data/data/events'
 """
-Formats feature vectors with following features:
+Formats vectors with following features:
     0: statsbomb_xg
     1: outcome
     2-3: shot coordinates
-    4: body part
-    5: technique
-    6: type
-    7-49: player coordinates
+    4: header (binary)
+    5: left foot (binary)
+    6: right foot (binary)
+    7-8: goalie coordinates
+    9-28: defender coordinates sorted by closeness to shot
+    29-48: teammate coordinates sorted by closeness to shot
 """
+
+def distance(shot, player):
+    return math.sqrt((player[0] - shot[0])**2 + (player[1] - shot[1])**2)
 
 def parse_object(parser):
     _, event, val = next(parser)
@@ -40,7 +46,7 @@ def parse_array(parser):
         _, event, val = next(parser)
     return arr, parser
 
-def get_shots_from_file(filename, with_penalties=False):
+def get_shots_from_file(filename):
     with open(filename, 'rb') as file:
         parser = ijson.parse(file)
         shots = []
@@ -50,46 +56,46 @@ def get_shots_from_file(filename, with_penalties=False):
             if (pre, event) == ('item', 'start_map'):
                 obj = {}
             elif (pre, event) == ('item', 'end_map'):
-                #shot type has id 16
+                #SELECT FEATURES HERE
                 if obj['type']['id'] == 16:
-                    length = 7
                     shot = [
-                        obj['shot']['statsbomb_xg'],
-                        1 if obj['shot']['outcome']['name'] == 'Goal' else -1,
-                        obj['location'][0],
-                        obj['location'][1],
-                        obj['shot']['body_part']['id'],
-                        obj['shot']['technique']['id'],
-                        obj['shot']['type']['id']
+                        obj['shot']['statsbomb_xg'],                            #StatsBomb xG
+                        1 if obj['shot']['outcome']['name'] == 'Goal' else -1,  #Outcome
+                        obj['location'][0],                                     #Shot X Coordinate
+                        obj['location'][1],                                     #Shot Y Coordinate
+                        1 if obj['shot']['body_part']['id'] == 37 else 0,       #Header?
+                        1 if obj['shot']['body_part']['id'] == 38 else 0,       #Left Foot?
+                        1 if obj['shot']['body_part']['id'] == 40 else 0        #Right Foot?
                     ]
-                    #if penalty, object has no freeze_frame
+                    #get player positions, ignoring penalty kicks
                     if obj['shot']['type']['id'] != 88:
-                        if 'freeze_frame' not in obj['shot']:
-                            print(obj)
-                        for p in obj['shot']['freeze_frame']:
-                            if p['teammate'] == False:
-                                shot.extend(p['location'])
-                                length += 2
-                        #pad defender locations
-                        while length < 29:
-                            shot.extend([-1, -1])
-                            length += 2
-                        for p in obj['shot']['freeze_frame']:
-                            if p['teammate'] == True:
-                                shot.extend(p['location'])
-                                length += 2
-                        #pad teammate locations
-                        while length < 49:
-                            shot.extend([-1, -1])
-                            length += 2
-                    #if penalty, pad all player location features
+                        freeze_frame = obj['shot']['freeze_frame']
+
+                        #goalie
+                        goalie = [p['location'] for p in freeze_frame if p['teammate'] == False and p['position']['id'] == 1]
+                        if not goalie:
+                            goalie = [60, 40]
+                        else: 
+                            goalie = np.array(goalie.flatten())
+                        shot.extend(goalie)
+
+                        #defenders sorted by closeness to ball
+                        defenders = [p['location'] for p in freeze_frame if p['teammate'] == False and p['position']['id'] != 1]
+                        defenders.sort(key=lambda x: distance(obj['location'], x))
+                        defenders = np.array(defenders).flatten()
+                        shot.extend(defenders)
+                        shot.extend([60, 40] * int((20 - len(defenders)) / 2))
+
+                        #teammates sorted by closeness to ball
+                        teammates = [p['location'] for p in freeze_frame if p['teammate'] == True ]
+                        teammates.sort(key=lambda x: distance(obj['location'], x))
+                        teammates = np.array(teammates).flatten()
+                        shot.extend(teammates)
+                        shot.extend([60, 40] * int((20 - len(teammates)) / 2))
+
+                        shots.append(shot)
                     else:
-                        if not with_penalties:
-                            continue
-                        while length < 49:
-                            shot.extend([-1, -1])
-                            length += 2
-                    shots.append(shot)
+                        continue
             else:
                 key = val
                 pre, event, val = next(parser)
