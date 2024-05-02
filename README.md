@@ -1,7 +1,9 @@
 # Expected Goals (xG) Model
 Fisher Marks & Nicholas Strickler
 
-Final Project Report (this is only accessible through this link): https://medium.com/@fisher.marks/expected-goals-xg-model-ce4e5ccd3db6
+**Final Report** 
+We thought formatting the report as a Medium story would be a clean and nice way of presenting the insights for our project. It is an unlisted story (not public, only accessible through the link below). We also exported as a pdf in the final_report.pdf file.
+https://medium.com/@fisher.marks/expected-goals-xg-model-ce4e5ccd3db6
 
 **Getting Started**
 First, make sure you are working in a Python environment with the right packages installed. To do so, simply activate a new environment and run the command ```pip install -r requirements.txt``` in the cloned project directory. 
