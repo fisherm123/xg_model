@@ -2,6 +2,7 @@ import os
 import ijson
 import numpy as np
 import math
+from decimal import Decimal
 
 DIR = '../../open-data/data/events'
 """
@@ -9,16 +10,24 @@ Formats vectors with following features:
     0: statsbomb_xg
     1: outcome
     2-3: shot coordinates
-    4: header (binary)
-    5: left foot (binary)
-    6: right foot (binary)
-    7-8: goalie coordinates
-    9-28: defender coordinates sorted by closeness to shot
-    29-48: teammate coordinates sorted by closeness to shot
+    4: shot angle (engineered)
+    5: header (binary)
+    6: left foot (binary)
+    7: right foot (binary)
+    8-9: goalie coordinates
+    10-29: defender coordinates sorted by closeness to shot
+    30-49: teammate coordinates sorted by closeness to shot
 """
 
 def distance(shot, player):
     return math.sqrt((player[0] - shot[0])**2 + (player[1] - shot[1])**2)
+
+def angle(x, y):
+    v1 = np.array([120, 36]) - float(x)
+    v2 = np.array([120, 44]) - float(y)
+    cos_t = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+    cos_t = np.clip(cos_t, -1.0, 1.0)
+    return Decimal(np.degrees(np.arccos(cos_t)))
 
 def parse_object(parser):
     _, event, val = next(parser)
@@ -63,9 +72,10 @@ def get_shots_from_file(filename):
                         1 if obj['shot']['outcome']['name'] == 'Goal' else -1,  #Outcome
                         obj['location'][0],                                     #Shot X Coordinate
                         obj['location'][1],                                     #Shot Y Coordinate
+                        angle(obj['location'][0], obj['location'][1]),          #Shot angle
                         1 if obj['shot']['body_part']['id'] == 37 else 0,       #Header?
                         1 if obj['shot']['body_part']['id'] == 38 else 0,       #Left Foot?
-                        1 if obj['shot']['body_part']['id'] == 40 else 0        #Right Foot?
+                        1 if obj['shot']['body_part']['id'] == 40 else 0,       #Right Foot?
                     ]
                     #get player positions, ignoring penalty kicks
                     if obj['shot']['type']['id'] != 88:
@@ -76,7 +86,7 @@ def get_shots_from_file(filename):
                         if not goalie:
                             goalie = [60, 40]
                         else: 
-                            goalie = np.array(goalie.flatten())
+                            goalie = np.array(goalie).flatten()
                         shot.extend(goalie)
 
                         #defenders sorted by closeness to ball
