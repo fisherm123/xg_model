@@ -25,7 +25,8 @@ model_ours.fit(x_train,
                batch_size=8000, 
                optimizer_type='stochastic_gradient_descent')
 ```
-The graphs used in the final report can also be produced in the same notebook, and the exact graph used in the final report can be found in the images directory.
+Simply run the notebook in the project directory in a Python environment with the requirements in requirements.txt. The graphs used in the final report can also be produced in the same notebook, and the exact graph used in the final report can be found in the images directory.
+
 **Neural Network**
 We also achieved the results from our Neural Network using the architecture and hyper-parameters currently in the neural_network.ipynb notebook, but for reference here:
 ```
@@ -55,4 +56,4 @@ def __init__(self, n_input_feature, n_output):
 
         self.output = torch.nn.Linear(1024, n_output)
 ```
-The graphs used in the final report can also be produced in the same notebook, and the exact graph used in the final report can be found in the images directory.
+Simply run the notebook in the project directory in a Python environment with the requirements in requirements.txt. The graphs used in the final report can also be produced in the same notebook, and the exact graph used in the final report can be found in the images directory.
